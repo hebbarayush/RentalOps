@@ -57,7 +57,7 @@ Core workflows, beyond CRUD:
 
 ## Screens
 
-<img width="1600" height="733" alt="Screenshot 2026-09-01 224231" src="https://github.com/user-attachments/assets/becab7d5-e40a-4a23-ba13-5cd27d287cb8" />
+<img width="1597" height="734" alt="Screenshot 2026-09-01 224207" src="https://github.com/user-attachments/assets/af90ffaa-e819-4a9e-ab93-cf30f4233cbb" />
 <img width="1600" height="733" alt="Screenshot 2026-09-01 224231" src="https://github.com/user-attachments/assets/5a6b22d5-b8dd-4fe6-952a-75461c457924" />
 
 ---
