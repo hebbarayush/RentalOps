@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rentalops-db
+    environment:
+      POSTGRES_DB: rentalops
+      POSTGRES_USER: rentalops
+      POSTGRES_PASSWORD: rentalops
+    ports:
+      - "5432:5432"
+    volumes:
+      - rentalops_pgdata:/var/lib/postgresql/data
+
+volumes:
+  rentalops_pgdata:
+

@@ -1,0 +1,12 @@
+# Normalize line endings — commit LF, check out native. Keeps diffs clean across OSes.
+* text=auto eol=lf
+
+# Binary / generated — never touch
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.jar binary
+package-lock.json -diff

@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: rentalops-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/rentalops}
+    username: ${DB_USERNAME:rentalops}
+    password: ${DB_PASSWORD:rentalops}
+  jpa:
+    hibernate:
+      # Schema is owned by Flyway; Hibernate only checks the mapping matches.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cache:
+    # Dashboard summary / rent-at-risk responses are cached briefly to absorb repeated polling.
+    # Defaults to an in-process Caffeine cache; set SPRING_CACHE_TYPE=redis alongside
+    # REDIS_ENABLED=true to move it onto Redis (shared across instances) instead.
+    type: ${SPRING_CACHE_TYPE:caffeine}
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=60s
+    redis:
+      time-to-live: 60s
+
+server:
+  port: ${PORT:8080}
+
+app:
+  redis:
+    # Off by default so the app runs with no external services beyond Postgres. Flip to true
+    # (and point spring.data.redis.* at a running Redis) to move login-attempt tracking and
+    # dashboard caching onto Redis instead of the DB / in-process cache.
+    enabled: ${REDIS_ENABLED:false}
+  jwt:
+    secret: ${JWT_SECRET:RentalOpsDevelopmentSecretKeyMustBeChangedBeforeProduction123456789}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  security:
+    login:
+      # Brute-force guard: DB-backed by default (DatabaseLoginAttemptService), Redis-backed
+      # when app.redis.enabled=true (RedisLoginAttemptService) — see LoginAttemptService.
+      max-attempts: ${LOGIN_MAX_ATTEMPTS:10}
+      window-minutes: ${LOGIN_WINDOW_MINUTES:15}
+  ai:
+    # When an Anthropic API key is present, maintenance requests are triaged by Claude;
+    # otherwise a deterministic keyword classifier is used.
+    anthropic-api-key: ${ANTHROPIC_API_KEY:}
+    model: ${ANTHROPIC_MODEL:claude-opus-5}
+  rent:
+    # Nightly auto-billing generates the next rent charge this many days before it is due.
+    generate-lead-days: ${RENT_GENERATE_LEAD_DAYS:7}
+  jobs:
+    autorun: ${JOBS_AUTORUN:true}
+  outbox:
+    # How often the OutboxProcessor drains PENDING notification events into real notifications.
+    poll-interval-ms: ${OUTBOX_POLL_INTERVAL_MS:10000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    redis:
+      # Avoid the actuator probing a Redis connection that isn't there when the app.redis
+      # feature flag is off; flip REDIS_ENABLED (and this) together.
+      enabled: ${REDIS_ENABLED:false}

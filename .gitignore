@@ -1,0 +1,39 @@
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Build output ---
+target/
+build/
+dist/
+*.jar
+*.war
+
+# --- Node / frontend ---
+node_modules/
+*.tsbuildinfo
+frontend/.vite/
+
+# --- Environment / secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+application-local.yml
+application-local.properties
+application-secrets.*
+
+# --- Logs ---
+*.log
+logs/
+
+# --- IDE / editor ---
+/.idea/
+/.vscode/
+*.iml
+
+# --- Tooling / local-only ---
+.claude/
+RUNBOOK.md
+HELP.md

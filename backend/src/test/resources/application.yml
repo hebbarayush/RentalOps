@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:rentalops;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+  cache:
+    type: simple
+
+app:
+  redis:
+    enabled: false
+  jwt:
+    secret: RentalOpsTestSecretKeyMustBeLongEnoughForJwtSigning123456789
+    expiration-ms: 86400000
+  cors:
+    allowed-origins: http://localhost:5173
+  security:
+    login:
+      max-attempts: 100
+      window-minutes: 15
+  ai:
+    anthropic-api-key:
+    model: claude-opus-5
+  rent:
+    generate-lead-days: 7
+  jobs:
+    autorun: false
