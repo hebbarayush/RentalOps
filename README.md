@@ -9,8 +9,8 @@ transactional **outbox**, safe scheduled jobs for a multi-instance deployment, o
 pessimistic locking, and a couple of genuinely differentiating features (AI-assisted
 maintenance triage, tenant payment-reliability scoring).
 
-<!-- Replace <user>/<repo> after you push -->
-![CI](https://github.com/<user>/<repo>/actions/workflows/ci.yml/badge.svg)
+
+![CI](https://github.com/hebbarayush/RentalOps/actions/workflows/ci.yml/badge.svg)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-brightgreen)
 ![React](https://img.shields.io/badge/React-19-blue)
