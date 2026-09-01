@@ -57,9 +57,8 @@ Core workflows, beyond CRUD:
 
 ## Screens
 
-> _Screenshots to be added._ Run locally (see [below](#running-locally)) and sign in as
-> `manager@rentalops.dev` / `password123` for the full workspace, or `tenant@rentalops.dev`
-> for the tenant portal.
+<img width="1600" height="733" alt="Screenshot 2026-09-01 224231" src="https://github.com/user-attachments/assets/becab7d5-e40a-4a23-ba13-5cd27d287cb8" />
+<img width="1600" height="733" alt="Screenshot 2026-09-01 224231" src="https://github.com/user-attachments/assets/5a6b22d5-b8dd-4fe6-952a-75461c457924" />
 
 ---
 
