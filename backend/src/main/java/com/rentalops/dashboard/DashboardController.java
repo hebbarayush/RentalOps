@@ -22,5 +22,10 @@ public class DashboardController {
     public RentAtRiskResponse rentAtRisk() {
         return dashboardService.rentAtRisk();
     }
+
+    @GetMapping("/trends")
+    public DashboardTrendsResponse trends() {
+        return dashboardService.trends();
+    }
 }
 

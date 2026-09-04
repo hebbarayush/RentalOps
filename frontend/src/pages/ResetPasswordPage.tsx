@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../lib/api";
 import { authApi } from "../lib/resources";
+import { BrandMark } from "../components/BrandMark";
 import { Button, Field, TextInput } from "../components/ui";
 
 export function ResetPasswordPage() {
@@ -33,7 +34,7 @@ export function ResetPasswordPage() {
     <main className="auth-page">
       <form className="auth-card" onSubmit={submit}>
         <div className="auth-brand">
-          <div className="brand-mark">R</div>
+          <BrandMark />
           <span>RentalOps</span>
         </div>
         <h1>Choose a new password</h1>

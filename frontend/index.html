@@ -3,9 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0066cc" />
+    <!-- Inline fallback favicon: always available, no dependency on the local-only
+         /brand PNGs (see .gitignore) — a fresh clone gets a tab icon either way. -->
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%233fb984'/%3E%3Ctext x='16' y='22' font-size='18' font-family='Arial' font-weight='bold' text-anchor='middle' fill='%2310201a'%3ER%3C/text%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230066cc'/%3E%3Ctext x='16' y='22' font-size='17' font-family='Arial, sans-serif' font-weight='700' text-anchor='middle' fill='%23fff'%3ER%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/brand/favicon-64.png" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+    <link
+      rel="preload"
+      href="/fonts/inter-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/inter-latin-600-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
     <title>RentalOps</title>
   </head>
@@ -14,4 +34,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

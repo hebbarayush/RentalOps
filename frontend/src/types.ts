@@ -231,6 +231,7 @@ export interface ReliabilityResponse {
   score: number;
   band: ReliabilityBand;
   predictedLateRisk: boolean;
+  reasons: string[];
   outstanding: number;
   nextDueDate: string | null;
 }
@@ -276,4 +277,10 @@ export interface DashboardSummaryResponse {
   rentCollected: number;
   pendingRent: number;
   openMaintenanceRequests: number;
+}
+
+export interface DashboardTrendsResponse {
+  collection: { month: string; expected: number; collected: number }[];
+  occupancy: { month: string; unitsUnderLease: number; totalUnits: number }[];
+  maintenance: { month: string; opened: number; resolved: number }[];
 }

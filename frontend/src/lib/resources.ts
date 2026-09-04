@@ -2,6 +2,7 @@ import { api } from "./api";
 import type {
   AdminUserRequest,
   DashboardSummaryResponse,
+  DashboardTrendsResponse,
   LeaseRenewalRequest,
   LeaseRequest,
   LeaseResponse,
@@ -40,7 +41,8 @@ function qs(params: ListParams = {}): string {
 
 export const dashboardApi = {
   summary: () => api.get<DashboardSummaryResponse>("/api/dashboard/summary"),
-  rentAtRisk: () => api.get<RentAtRiskResponse>("/api/dashboard/rent-at-risk")
+  rentAtRisk: () => api.get<RentAtRiskResponse>("/api/dashboard/rent-at-risk"),
+  trends: () => api.get<DashboardTrendsResponse>("/api/dashboard/trends")
 };
 
 export const propertiesApi = {
@@ -60,6 +62,7 @@ export const tenantsApi = {
 
 export const leasesApi = {
   list: (p?: ListParams) => api.get<Page<LeaseResponse>>(`/api/leases${qs(p)}`),
+  expiringSoon: () => api.get<LeaseResponse[]>("/api/leases/expiring-soon"),
   create: (body: LeaseRequest) => api.post<LeaseResponse>("/api/leases", body),
   update: (id: number, body: LeaseRequest) => api.put<LeaseResponse>(`/api/leases/${id}`, body),
   activate: (id: number) => api.post<LeaseResponse>(`/api/leases/${id}/activate`),

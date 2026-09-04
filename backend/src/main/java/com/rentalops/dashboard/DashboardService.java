@@ -1,11 +1,17 @@
 package com.rentalops.dashboard;
 
 import com.rentalops.auth.CurrentUserService;
+import com.rentalops.dashboard.DashboardTrendsResponse.CollectionPoint;
+import com.rentalops.dashboard.DashboardTrendsResponse.MaintenancePoint;
+import com.rentalops.dashboard.DashboardTrendsResponse.OccupancyPoint;
+import com.rentalops.lease.Lease;
 import com.rentalops.lease.LeaseRepository;
 import com.rentalops.lease.LeaseService;
 import com.rentalops.lease.LeaseStatus;
 import com.rentalops.maintenance.MaintenanceRepository;
+import com.rentalops.maintenance.MaintenanceRequest;
 import com.rentalops.maintenance.MaintenanceStatus;
+import com.rentalops.payment.RentPayment;
 import com.rentalops.payment.RentPaymentRepository;
 import com.rentalops.property.PropertyRepository;
 import com.rentalops.tenant.ReliabilityResponse;
@@ -14,6 +20,11 @@ import com.rentalops.tenant.TenantReliabilityService;
 import com.rentalops.tenant.TenantRepository;
 import com.rentalops.user.User;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.cache.annotation.Cacheable;
@@ -74,6 +85,76 @@ public class DashboardService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new RentAtRiskResponse(atRisk.size(), exposure, atRisk);
+    }
+
+    /**
+     * Six months of movement behind the snapshot: rent expected vs collected, units under lease,
+     * and maintenance opened vs resolved. Same scoping as {@link #summary()}.
+     */
+    @Cacheable(cacheNames = "dashboardTrends", key = "@currentUserService.requireCurrentUser().id")
+    @Transactional(readOnly = true)
+    public DashboardTrendsResponse trends() {
+        User current = currentUserService.requireCurrentUser();
+        boolean admin = currentUserService.isAdmin(current);
+
+        YearMonth first = YearMonth.now().minusMonths(5);
+        List<YearMonth> window = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            window.add(first.plusMonths(i));
+        }
+        LocalDate windowStart = first.atDay(1);
+        LocalDate windowEnd = YearMonth.now().atEndOfMonth();
+
+        List<RentPayment> payments = admin
+                ? rentPaymentRepository.findByDueDateBetween(windowStart, windowEnd)
+                : rentPaymentRepository.findByManagerAndDueDateBetween(current, windowStart, windowEnd);
+        List<Lease> leases = admin
+                ? leaseRepository.findAll()
+                : leaseRepository.findAllByPropertyManager(current);
+        List<MaintenanceRequest> requests = admin
+                ? maintenanceRepository.findAll()
+                : maintenanceRepository.findAllByPropertyManager(current);
+        long totalUnits = admin
+                ? propertyRepository.sumTotalUnits()
+                : propertyRepository.sumTotalUnitsByManager(current);
+
+        List<CollectionPoint> collection = new ArrayList<>();
+        List<OccupancyPoint> occupancy = new ArrayList<>();
+        List<MaintenancePoint> maintenance = new ArrayList<>();
+
+        for (YearMonth ym : window) {
+            String label = ym.toString();
+            LocalDate monthStart = ym.atDay(1);
+            LocalDate monthEnd = ym.atEndOfMonth();
+
+            BigDecimal expected = BigDecimal.ZERO;
+            BigDecimal collected = BigDecimal.ZERO;
+            for (RentPayment p : payments) {
+                if (YearMonth.from(p.getDueDate()).equals(ym)) {
+                    expected = expected.add(p.getAmountDue());
+                    collected = collected.add(p.getAmountPaid());
+                }
+            }
+            collection.add(new CollectionPoint(label, expected, collected));
+
+            long underLease = leases.stream()
+                    .filter(l -> l.getLeaseStatus() == LeaseStatus.ACTIVE || l.getLeaseStatus() == LeaseStatus.EXPIRED)
+                    .filter(l -> !l.getStartDate().isAfter(monthEnd) && !l.getEndDate().isBefore(monthStart))
+                    .count();
+            occupancy.add(new OccupancyPoint(label, underLease, totalUnits));
+
+            long opened = requests.stream().filter(r -> monthOf(r.getCreatedAt()).equals(ym)).count();
+            long resolved = requests.stream()
+                    .filter(r -> r.getResolvedAt() != null && monthOf(r.getResolvedAt()).equals(ym))
+                    .count();
+            maintenance.add(new MaintenancePoint(label, opened, resolved));
+        }
+
+        return new DashboardTrendsResponse(collection, occupancy, maintenance);
+    }
+
+    private static YearMonth monthOf(Instant instant) {
+        return YearMonth.from(instant.atZone(ZoneId.systemDefault()).toLocalDate());
     }
 
     /** Admins see system-wide totals; property managers see only their own portfolio. */

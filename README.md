@@ -57,9 +57,16 @@ Core workflows, beyond CRUD:
 
 ## Screens
 
-> _Screenshots to be added._ Run locally (see [below](#running-locally)) and sign in as
-> `manager@rentalops.dev` / `password123` for the full workspace, or `tenant@rentalops.dev`
-> for the tenant portal.
+| Manager dashboard | Tenant home |
+|---|---|
+| ![Manager dashboard](docs/screenshots/dashboard.png) | ![Tenant home](docs/screenshots/tenant-home.png) |
+
+| Leases |
+|---|
+| ![Leases](docs/screenshots/leases.png) |
+
+Run locally (see [below](#running-locally)) and sign in as `manager@rentalops.dev` /
+`password123` for the full workspace, or `tenant@rentalops.dev` for the tenant portal.
 
 ---
 

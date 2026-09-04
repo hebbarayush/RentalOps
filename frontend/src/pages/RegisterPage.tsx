@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ApiError } from "../lib/api";
+import { BrandMark } from "../components/BrandMark";
 import { Button, Field, Select, TextInput } from "../components/ui";
 import type { RegisterRequest } from "../types";
 
@@ -43,7 +44,7 @@ export function RegisterPage() {
     <main className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <div className="auth-brand">
-          <div className="brand-mark">R</div>
+          <BrandMark />
           <span>RentalOps</span>
         </div>
         <h1>Create account</h1>

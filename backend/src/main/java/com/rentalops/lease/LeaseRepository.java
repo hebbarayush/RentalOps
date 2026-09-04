@@ -21,6 +21,8 @@ public interface LeaseRepository extends JpaRepository<Lease, Long>, JpaSpecific
 
     Page<Lease> findByPropertyManager(User manager, Pageable pageable);
 
+    List<Lease> findAllByPropertyManager(User manager);
+
     Page<Lease> findByTenant(Tenant tenant, Pageable pageable);
 
     long countByPropertyManagerAndLeaseStatus(User manager, LeaseStatus leaseStatus);

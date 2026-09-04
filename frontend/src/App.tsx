@@ -1,8 +1,8 @@
 import { Building2, FileText, Home, IndianRupee, LogOut, ShieldCheck, Users, Wrench } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
+import { BrandMark } from "./components/BrandMark";
 import { NotificationBell } from "./components/NotificationBell";
-import { titleCase } from "./lib/format";
 import type { RoleName } from "./types";
 
 interface NavItem {
@@ -15,13 +15,19 @@ interface NavItem {
 
 const MANAGER: RoleName[] = ["ADMIN", "PROPERTY_MANAGER"];
 
+function initials(name?: string | null): string {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  if (parts.length === 0) return "?";
+  return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
 const items: NavItem[] = [
   { to: "/", label: "Dashboard", icon: Home, end: true, roles: MANAGER },
   { to: "/", label: "My home", icon: Home, end: true, roles: ["TENANT"] },
   { to: "/properties", label: "Properties", icon: Building2, roles: MANAGER },
   { to: "/tenants", label: "Tenants", icon: Users, roles: MANAGER },
   { to: "/leases", label: "Leases", icon: FileText, roles: MANAGER },
-  { to: "/payments", label: "Rent payments", icon: IndianRupee },
+  { to: "/payments", label: "Rent", icon: IndianRupee },
   { to: "/maintenance", label: "Maintenance", icon: Wrench },
   { to: "/users", label: "Users", icon: ShieldCheck, roles: ["ADMIN"] }
 ];
@@ -41,11 +47,8 @@ export function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">R</div>
-          <div>
-            <strong>RentalOps</strong>
-            <span>Property operations</span>
-          </div>
+          <BrandMark />
+          <strong>RentalOps</strong>
         </div>
         <nav>
           {visible.map((link) => {
@@ -57,31 +60,29 @@ export function App() {
                 end={link.end}
                 className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
               >
-                <Icon size={18} />
+                <Icon size={16} strokeWidth={2} />
                 {link.label}
               </NavLink>
             );
           })}
         </nav>
+        <div className="sidebar-foot">
+          <span className="sidebar-avatar" aria-hidden="true">
+            {initials(user?.fullName)}
+          </span>
+          <div>
+            <strong>{user?.fullName}</strong>
+            <span>{user?.email}</span>
+          </div>
+        </div>
       </aside>
       <main className="main-panel">
-        <header className="topbar">
-          <div>
-            <h1>Workspace</h1>
-            <p>Manage properties, tenants, rent, and maintenance from one place.</p>
-          </div>
-          <div className="topbar-right">
-            <NotificationBell />
-            <div className="user-chip">
-              <div className="user-meta">
-                <strong>{user?.fullName}</strong>
-                <span>{user?.roles.map(titleCase).join(", ")}</span>
-              </div>
-              <button className="btn btn-ghost" onClick={handleLogout} title="Log out">
-                <LogOut size={16} />
-              </button>
-            </div>
-          </div>
+        <header className="ledge">
+          <NotificationBell />
+          <button className="ledge-signout" onClick={handleLogout} title="Sign out">
+            <LogOut size={15} strokeWidth={2} />
+            <span>Sign out</span>
+          </button>
         </header>
         <Outlet />
       </main>

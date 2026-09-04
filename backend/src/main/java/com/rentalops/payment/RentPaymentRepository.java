@@ -21,6 +21,12 @@ public interface RentPaymentRepository
 
     List<RentPayment> findByPaymentStatusAndDueDateBefore(PaymentStatus paymentStatus, LocalDate date);
 
+    List<RentPayment> findByDueDateBetween(LocalDate from, LocalDate to);
+
+    @Query("select p from RentPayment p where p.property.manager = :manager and p.dueDate between :from and :to")
+    List<RentPayment> findByManagerAndDueDateBetween(
+            @Param("manager") User manager, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
     boolean existsByLeaseIdAndDueDate(Long leaseId, LocalDate dueDate);
 
     List<RentPayment> findByTenantIdOrderByDueDateAsc(Long tenantId);

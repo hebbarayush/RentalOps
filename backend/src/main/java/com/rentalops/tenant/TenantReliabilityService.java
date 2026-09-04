@@ -123,21 +123,28 @@ public class TenantReliabilityService {
             return reasons;
         }
         if (currentlyOverdue > 0) {
-            reasons.add(currentlyOverdue + " payment(s) currently overdue.");
+            reasons.add(plural(currentlyOverdue, "payment") + " currently overdue.");
         }
         if (late > 0) {
-            reasons.add(late + " payment(s) paid late (avg " + avgDaysLate + " day(s) late).");
+            String days = avgDaysLate == Math.rint(avgDaysLate)
+                    ? String.valueOf((long) avgDaysLate) : String.valueOf(avgDaysLate);
+            reasons.add(plural(late, "payment") + " paid late (avg " + days
+                    + (avgDaysLate == 1.0 ? " day late)." : " days late)."));
         }
         if (recentLateOrOverdue >= 2) {
-            reasons.add(recentLateOrOverdue + " late or overdue payment(s) in the last 90 days.");
+            reasons.add(recentLateOrOverdue + " late or overdue payments in the last 90 days.");
         }
         if (onTime > 0) {
-            reasons.add(onTime + " payment(s) paid on time.");
+            reasons.add(plural(onTime, "payment") + " paid on time.");
         }
         if (reasons.isEmpty()) {
             reasons.add("Clean payment history — every charge paid on or before its due date.");
         }
         return reasons;
+    }
+
+    private static String plural(int n, String noun) {
+        return n + " " + noun + (n == 1 ? "" : "s");
     }
 
     /** Recent charges (due within 3 months) count in full; older ones count for less. */
