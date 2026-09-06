@@ -45,7 +45,7 @@ public class RedisLoginAttemptService implements LoginAttemptService {
         String countKey = COUNT_PREFIX + key(email);
         Long count = redis.opsForValue().increment(countKey);
         if (count != null && count == 1L) {
-            redis.expire(countKey, window.toMinutes(), TimeUnit.MINUTES);
+            redis.expire(countKey, window.toSeconds(), TimeUnit.SECONDS);
         }
         if (count != null && count >= maxAttempts) {
             redis.opsForValue().set(BLOCK_PREFIX + key(email), "1", window);

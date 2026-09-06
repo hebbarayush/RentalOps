@@ -33,7 +33,17 @@ logs/
 /.vscode/
 *.iml
 
-# --- Tooling / local-only ---
+# --- Tooling / local-only (Claude Code / Impeccable) ---
 .claude/
+.impeccable/
+/DESIGN.md
+/PRODUCT.md
+.github/agents/
+.github/hooks/
+.github/skills/
 RUNBOOK.md
 HELP.md
+
+# --- Design source drop + brand assets (not for the public repo) ---
+/files-RP-design/
+frontend/public/brand/

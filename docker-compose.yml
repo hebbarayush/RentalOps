@@ -10,6 +10,26 @@ services:
       - "5432:5432"
     volumes:
       - rentalops_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rentalops"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Optional. The app runs on Postgres alone by default; start this and set
+  # REDIS_ENABLED=true + SPRING_CACHE_TYPE=redis to move login-attempt tracking and the
+  # dashboard cache onto Redis (shared across instances). Cache/rate-limit data only —
+  # no persistence configured on purpose.
+  redis:
+    image: redis:7-alpine
+    container_name: rentalops-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   rentalops_pgdata:

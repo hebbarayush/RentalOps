@@ -79,7 +79,7 @@ Run locally (see [below](#running-locally)) and sign in as `manager@rentalops.de
 | **Migrations** | Flyway |
 | **Auth** | Stateless JWT (jjwt), BCrypt, role-based + per-row authorization |
 | **Async / messaging** | Spring `ApplicationEventPublisher` domain events + DB-backed outbox + `@Scheduled` workers |
-| **Caching / rate-limiting** | Caffeine by default; Redis optional (feature-flagged) |
+| **Caching / brute-force guard** | Caffeine + DB by default; Redis optional (feature-flagged, embedded-Redis in tests) |
 | **AI** | `anthropic-java` SDK (optional, for maintenance triage) |
 | **API docs** | springdoc-openapi / Swagger UI |
 | **Frontend** | React 19 + TypeScript 5.7, Vite 6, React Router 7, hand-rolled typed `fetch` data layer (no TanStack Query / Redux) |
@@ -163,12 +163,23 @@ job.
 - **Pessimistic row lock** on the property before any unit-occupancy change, so two concurrent lease activations for the same unit serialize instead of racing past the "still vacant" check.
 - **DB-level backstops** — `occupied_units <= total_units` check constraint; a partial unique index enforcing at most one `ACTIVE` lease per `(property, unit)`; a unique constraint making rent-charge generation idempotent.
 
-### 4. No critical state in memory
+### 4. No critical state in memory — and an optional Redis tier
 
 Password-reset tokens and login-attempt / brute-force tracking live in the database
 (`password_reset_tokens`, `login_attempts`), so they survive a restart and are correct across
-instances. Redis-backed implementations exist behind a feature flag for when a deployment
-actually warrants it.
+instances with zero external services.
+
+Redis is an **optional** swap-in, wired by feature flag (`app.redis.enabled`), not a
+dependency:
+
+| Concern | Default | With `REDIS_ENABLED=true` |
+|---|---|---|
+| Brute-force login guard | `DatabaseLoginAttemptService` (`login_attempts` table) | `RedisLoginAttemptService` — counter + block key with native TTL, no DB round-trip per attempt |
+| Dashboard cache (`summary`, `trends`, `rent-at-risk`) | in-process Caffeine, 60 s | `RedisCacheManager` when `SPRING_CACHE_TYPE=redis` — shared across instances, values stored as inspectable JSON (`rentalops:cache:*`) |
+
+Both implementations are chosen at startup by `@ConditionalOnProperty`; the interface and every
+caller are identical either way. `CacheConfig` binds a typed JSON serializer per cache so the
+`record` DTOs round-trip without implementing `Serializable`.
 
 ### 5. Domain intelligence
 
@@ -210,7 +221,7 @@ users 1──< notifications                          properties 1──< mainte
 **Prerequisites:** JDK 21, Maven 3.9+, Node 20+, and Docker (or a local PostgreSQL 16+).
 
 ```bash
-# 1. Database
+# 1. Database  (add `redis` to also start Redis — optional, see "No critical state in memory")
 docker compose up -d db          # Postgres on :5432 (db/user/pass all "rentalops")
 
 # 2. Backend  — Flyway migrates on start; demo data is seeded on an empty DB
@@ -219,6 +230,9 @@ cd backend && mvn spring-boot:run # → http://localhost:8080  (Swagger at /swag
 # 3. Frontend
 cd frontend && npm install && npm run dev   # → http://localhost:5173  (proxies /api → :8080)
 ```
+
+To run with Redis: `docker compose up -d db redis`, then start the backend with
+`REDIS_ENABLED=true SPRING_CACHE_TYPE=redis mvn spring-boot:run`.
 
 Seeded accounts — all password `password123`:
 
@@ -251,7 +265,8 @@ override. Highlights:
 | `LOGIN_MAX_ATTEMPTS` / `LOGIN_WINDOW_MINUTES` | `10` / `15` | brute-force guard |
 | `OUTBOX_POLL_INTERVAL_MS` | `10000` | outbox drain interval |
 | `JOBS_AUTORUN` | `true` | master switch for the scheduled jobs |
-| `REDIS_ENABLED` + `SPRING_CACHE_TYPE` | `false` / `caffeine` | move rate-limiting & dashboard cache onto Redis |
+| `REDIS_ENABLED` | `false` | login-attempt guard on Redis instead of the DB (`REDIS_HOST` / `REDIS_PORT` point at it) |
+| `SPRING_CACHE_TYPE` | `caffeine` | set to `redis` (with `REDIS_ENABLED=true`) to share the dashboard cache across instances |
 | `VITE_API_BASE_URL` | *(Vite proxy)* | frontend → backend base URL for a deployed setup |
 
 > **Note on `JWT_SECRET`:** the code ships a clearly-labelled development fallback so the app
@@ -289,14 +304,15 @@ Full interactive docs at `/swagger-ui/index.html` when the backend is running.
 ## Testing & CI
 
 ```bash
-cd backend  && mvn test        # 35 tests — H2, Flyway off, jobs off
+cd backend  && mvn test        # 39 tests — H2, Flyway off, jobs off
 cd frontend && npm run build   # tsc typecheck + Vite build
 ```
 
 Backend tests cover the auth flow, RBAC scoping, lease lifecycle & concurrency, rent billing
 idempotency, reliability scoring, maintenance triage (rules path), the login-attempt guard
-(in-memory & DB), the job lock, and the outbox processor (happy path + retry → dead-letter →
-replay). `GitHub Actions` runs both jobs on every push and PR.
+(in-memory & DB), the job lock, the outbox processor (happy path + retry → dead-letter →
+replay), and the optional Redis path (brute-force guard + cache JSON round-trip against an
+embedded Redis). `GitHub Actions` runs both jobs on every push and PR.
 
 ---
 
