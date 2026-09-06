@@ -1,0 +1,2 @@
+# Fail-fast validation of production configuration, before any bean is created.
+org.springframework.boot.env.EnvironmentPostProcessor=com.rentalops.config.ProdConfigValidator

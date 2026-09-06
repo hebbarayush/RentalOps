@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+.git/
+.gitignore
+*.md
+.env
+.env.*
+!.env.example
+public/brand/

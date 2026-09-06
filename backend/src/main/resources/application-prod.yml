@@ -1,0 +1,49 @@
+# Production profile. Activate with SPRING_PROFILES_ACTIVE=prod (the Dockerfile sets this).
+# Everything here is env-driven and has NO local fallback — the app fails to start if a
+# required value is missing (see ProdConfigValidator).
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+server:
+  port: ${PORT:8080}
+  # Behind a load balancer / reverse proxy (Render, Fly, nginx) — trust the forwarded headers
+  # so generated URLs and the request scheme are correct (https, not http).
+  forward-headers-strategy: framework
+  shutdown: graceful
+
+app:
+  # Empty defaults so ProdConfigValidator produces a clear, aggregated error instead of a raw
+  # "could not resolve placeholder" — but the app still refuses to start without them.
+  jwt:
+    secret: ${JWT_SECRET:}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  redis:
+    enabled: ${REDIS_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    root: INFO
+    com.rentalops: INFO
+    org.hibernate.SQL: WARN

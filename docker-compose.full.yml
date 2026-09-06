@@ -1,0 +1,79 @@
+# Whole stack, built from source and run in containers:
+#   docker compose -f docker-compose.full.yml up --build
+#
+# Frontend  → http://localhost:8081   (nginx serves the SPA and proxies /api to the backend)
+# Backend   → http://localhost:8082   (Swagger at /swagger-ui/index.html)
+#
+# This runs the DEFAULT Spring profile with explicit non-dev values. Real deployment uses the
+# 'prod' profile (SPRING_PROFILES_ACTIVE=prod) with a generated secret and an HTTPS CORS origin
+# — see docs/DEPLOYMENT.md.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: rentalops
+      POSTGRES_USER: rentalops
+      POSTGRES_PASSWORD: rentalops
+    volumes:
+      - rentalops_pgdata:/var/lib/postgresql/data
+    # Host port 5433 so this doesn't collide with a local Postgres on 5432.
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rentalops"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # Host port 6380 so this doesn't collide with a local Redis on 6379.
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      DB_URL: jdbc:postgresql://db:5432/rentalops
+      DB_USERNAME: rentalops
+      DB_PASSWORD: rentalops
+      # Local compose only — a fixed value so the stack is reproducible. Never use in a real deploy.
+      JWT_SECRET: local-compose-secret-not-for-real-use-0123456789abcdef
+      CORS_ALLOWED_ORIGINS: http://localhost:8081
+      REDIS_ENABLED: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      SPRING_CACHE_TYPE: redis
+      JOBS_AUTORUN: "true"
+    # Host port 8082 so this doesn't collide with a local backend on 8080.
+    ports:
+      - "8082:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Empty → the app calls /api relative; nginx proxies it to the backend service.
+        VITE_API_BASE_URL: ""
+    environment:
+      BACKEND_ORIGIN: http://backend:8080
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+
+volumes:
+  rentalops_pgdata:

@@ -30,6 +30,7 @@ maintenance triage, tenant payment-reliability scoring).
 - [API overview](#api-overview)
 - [Testing & CI](#testing--ci)
 - [Project structure](#project-structure)
+- [Deployment](#deployment)
 - [Roadmap](#roadmap)
 
 ---
@@ -84,7 +85,7 @@ Run locally (see [below](#running-locally)) and sign in as `manager@rentalops.de
 | **API docs** | springdoc-openapi / Swagger UI |
 | **Frontend** | React 19 + TypeScript 5.7, Vite 6, React Router 7, hand-rolled typed `fetch` data layer (no TanStack Query / Redux) |
 | **CI** | GitHub Actions — `mvn verify` + `npm run build` |
-| **Local infra** | Docker Compose (Postgres) |
+| **Packaging / deploy** | Multi-stage Dockerfiles (backend + frontend); Docker Compose for local; `render.yaml` blueprint; a fail-fast `prod` Spring profile |
 
 ---
 
@@ -234,6 +235,13 @@ cd frontend && npm install && npm run dev   # → http://localhost:5173  (proxie
 To run with Redis: `docker compose up -d db redis`, then start the backend with
 `REDIS_ENABLED=true SPRING_CACHE_TYPE=redis mvn spring-boot:run`.
 
+**Or run the whole stack in containers** — backend, frontend (nginx), Postgres and Redis:
+
+```bash
+docker compose -f docker-compose.full.yml up --build
+# frontend → http://localhost:8081   backend → http://localhost:8082
+```
+
 Seeded accounts — all password `password123`:
 
 | Email | Lands on |
@@ -304,7 +312,7 @@ Full interactive docs at `/swagger-ui/index.html` when the backend is running.
 ## Testing & CI
 
 ```bash
-cd backend  && mvn test        # 39 tests — H2, Flyway off, jobs off
+cd backend  && mvn test        # 46 tests — H2, Flyway off, jobs off
 cd frontend && npm run build   # tsc typecheck + Vite build
 ```
 
@@ -330,29 +338,49 @@ backend/
       events/      domain events
       jobs/        JobLock, JobLockService (DB mutex for @Scheduled)
       outbox/      OutboxEvent, OutboxProcessor, OutboxController
-    config/        SecurityConfig, DataSeeder
-  src/main/resources/db/migration/   V1..V6
+    config/        SecurityConfig, DataSeeder, CacheConfig, ProdConfigValidator
+  src/main/resources/
+    db/migration/  V1..V6
+    application-prod.yml   prod overrides (no local fallbacks)
+  Dockerfile     multi-stage: Maven build → JRE-alpine runtime, non-root
 frontend/
   src/
     auth/          AuthContext (token + user, role helpers)
-    components/    ProtectedRoute, NotificationBell, ui primitives
+    components/    ProtectedRoute, NotificationBell, ui primitives, BrandMark
     lib/           typed fetch client, resource modules, list/collection hooks
     pages/         one per screen (dashboard, properties, tenants, leases, payments, maintenance, users, portal)
-docker-compose.yml    Postgres for local dev
-.github/workflows/    CI
+  Dockerfile     multi-stage: Vite build → nginx (SPA fallback + /api proxy)
+docker-compose.yml         Postgres + Redis for local dev
+docker-compose.full.yml    the whole stack, built from source
+render.yaml                Render blueprint (API + static site + Postgres)
+docs/DEPLOYMENT.md         step-by-step for Render / Netlify / Fly.io
+.github/workflows/         CI (backend tests, frontend build, Docker image builds)
 PROJECT_SPEC.md, SUMMARY.md   original product & engineering spec
 ```
+
+---
+
+## Deployment
+
+Both artifacts are container-ready. `SPRING_PROFILES_ACTIVE=prod` activates
+`application-prod.yml` (no local fallbacks) and `ProdConfigValidator`, which refuses to start —
+with one aggregated error — if `JWT_SECRET`, `CORS_ALLOWED_ORIGINS` or `DB_URL` is missing or
+still a development placeholder.
+
+- **One-click:** [`render.yaml`](render.yaml) provisions the API, the static frontend and a
+  managed Postgres from this repo.
+- **Manual / other hosts:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) walks through Render,
+  Netlify/Vercel and Fly.io, the CORS/API-URL handshake, and the post-deploy checklist.
 
 ---
 
 ## Roadmap
 
 - Frontend component/unit tests (Vitest + Testing Library)
-- Dockerfiles for backend & frontend + a full-stack compose; a `prod` Spring profile with fail-fast config validation
-- Deployment (hosted backend + managed Postgres, static frontend)
 - SMTP delivery for notifications & password-reset links (the outbox already makes this a drop-in second consumer)
 - Owner-statement / rent-roll PDF export
 - Outbox: `SELECT ... FOR UPDATE SKIP LOCKED` for parallel drainers; emit to a real broker once there's a second consumer
+- Refresh-token rotation; move the scheduler to ShedLock/Quartz
 
 ---
 

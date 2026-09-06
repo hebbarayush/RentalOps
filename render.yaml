@@ -1,0 +1,66 @@
+# Render blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploy the whole stack from this repo:
+#   1. Push to GitHub.
+#   2. Render dashboard → New → Blueprint → pick this repo.
+#   3. Set the two values Render prompts for (see `sync: false` below).
+#   4. After the first deploy, copy the frontend URL into the backend's CORS_ALLOWED_ORIGINS
+#      and the backend URL into the frontend's VITE_API_BASE_URL, then redeploy both.
+#
+# Free tier: the web service sleeps after 15 min idle (≈30 s cold start); the database is
+# free for 90 days. See docs/DEPLOYMENT.md for the paid-tier and alternative-host notes.
+
+databases:
+  - name: rentalops-db
+    databaseName: rentalops
+    user: rentalops
+    plan: free
+
+services:
+  # ---------- backend ----------
+  - type: web
+    name: rentalops-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_URL
+        fromDatabase:
+          name: rentalops-db
+          property: connectionString      # jdbc:postgresql://... — Render provides the full JDBC URL
+      - key: DB_USERNAME
+        fromDatabase:
+          name: rentalops-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: rentalops-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true               # Render generates a strong random value once
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false                       # set to the frontend URL after its first deploy
+      - key: JOBS_AUTORUN
+        value: "true"
+      - key: REDIS_ENABLED
+        value: "false"                    # free tier: no Redis. See DEPLOYMENT.md to add it.
+      # - key: ANTHROPIC_API_KEY          # optional — enables Claude maintenance triage
+      #   sync: false
+
+  # ---------- frontend ----------
+  - type: web
+    name: rentalops-web
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false                       # set to the backend URL after its first deploy
+    routes:
+      - type: rewrite                     # SPA fallback
+        source: /*
+        destination: /index.html

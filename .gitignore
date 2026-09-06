@@ -47,3 +47,6 @@ HELP.md
 # --- Design source drop + brand assets (not for the public repo) ---
 /files-RP-design/
 frontend/public/brand/
+
+# --- Personal study notes (not for the repo) ---
+/Study/
