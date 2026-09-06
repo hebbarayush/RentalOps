@@ -4,6 +4,7 @@ RentalOps ships as two artifacts: a **Spring Boot API** (a Docker image) and a *
 bundle**. It needs a **PostgreSQL** database, and *optionally* **Redis**.
 
 - [Run the whole stack locally in Docker](#run-the-whole-stack-locally-in-docker)
+- [The free-tier stack: Vercel + Render + Supabase + Upstash](#the-free-tier-stack-vercel--render--supabase--upstash)
 - [Option A — Render blueprint (one repo, one click)](#option-a--render-blueprint)
 - [Option B — Render API + Netlify/Vercel frontend (manual)](#option-b--render-api--netlify-frontend-manual)
 - [Option C — Fly.io + Neon](#option-c--flyio--neon)
@@ -32,6 +33,96 @@ Sign in with `manager@rentalops.dev` / `password123`. `Ctrl-C` then
 
 This runs the **default** Spring profile with explicit non-dev values. Real deployment uses the
 `prod` profile — see [below](#the-prod-profile--config-validation).
+
+---
+
+## The free-tier stack: Vercel + Render + Supabase + Upstash
+
+Frontend → **Vercel**, backend (Docker) → **Render**, Postgres → **Supabase**, Redis →
+**Upstash**. All free.
+
+### 1. Supabase (Postgres)
+
+1. New project. Save the **database password** you set.
+2. **Project Settings → Database → Connection pooling** → **Session mode** (port **5432**).
+   Render can't reach Supabase's direct (IPv6-only) endpoint — the pooler is IPv4.
+3. You need three values:
+
+   | Env var | Value |
+   |---|---|
+   | `DB_URL` | `jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require` |
+   | `DB_USERNAME` | `postgres.<project-ref>` (the pooler username — shown on that page) |
+   | `DB_PASSWORD` | the database password from step 1 |
+
+### 2. Upstash (Redis)
+
+1. Create a Redis database. Pick a region near Render's (e.g. both `us-east`).
+2. From the database **Details**:
+
+   | Env var | Value |
+   |---|---|
+   | `REDIS_HOST` | `<name>.upstash.io` |
+   | `REDIS_PORT` | `6379` |
+   | `REDIS_PASSWORD` | the password shown |
+   | `REDIS_SSL` | `true` |
+
+   Free tier = 10,000 commands/day. `SPRING_CACHE_TYPE=redis` puts the dashboard cache on it
+   too; set `SPRING_CACHE_TYPE=caffeine` if you'd rather keep the cache in-process and only use
+   Upstash for the login-attempt guard.
+
+### 3. Render (backend)
+
+**New → Blueprint** → pick the repo (uses [`render.yaml`](../render.yaml)), or **New → Web
+Service** → Docker, Dockerfile `backend/Dockerfile`, context `backend`, health check
+`/actuator/health`. Environment variables:
+
+```
+SPRING_PROFILES_ACTIVE = prod
+DB_URL                 = (from Supabase, step 1)
+DB_USERNAME            = (from Supabase)
+DB_PASSWORD            = (from Supabase)
+JWT_SECRET             = <openssl rand -hex 32>   (auto-generated if you use the blueprint)
+CORS_ALLOWED_ORIGINS   = https://placeholder      (fix in step 5)
+REDIS_ENABLED          = true
+REDIS_HOST / REDIS_PORT / REDIS_PASSWORD / REDIS_SSL = (from Upstash, step 2)
+SPRING_CACHE_TYPE      = redis
+JOBS_AUTORUN           = true
+```
+
+Deploy. In the logs you want: Flyway applying `V1..V6` → `Production config validated` →
+`Started RentalOpsApplication`. If it refuses to start, the log names the bad variable.
+Note the URL, e.g. `https://rentalops-api.onrender.com`.
+
+### 4. Vercel (frontend)
+
+Import the repo →
+
+| Setting | Value |
+|---|---|
+| **Root Directory** | `frontend` |
+| Framework Preset | Vite (auto-detected once the root is `frontend`) |
+| Environment Variables | **remove all auto-detected ones**; add just `VITE_API_BASE_URL` = the Render URL from step 3 |
+
+Deploy. `frontend/vercel.json` handles SPA routing. Note the URL, e.g.
+`https://rental-ops.vercel.app`.
+
+### 5. Close the CORS loop
+
+Render → `rentalops-api` → Environment → `CORS_ALLOWED_ORIGINS` = the Vercel URL (exact, no
+trailing slash) → save (redeploys).
+
+### 6. Verify — run the [post-deploy checklist](#post-deploy-checklist).
+
+### Gotchas
+
+- **Supabase free projects pause after ~1 week idle** — un-pause from the dashboard, or the
+  backend can't connect.
+- **Render free backend sleeps after 15 min** — first request takes ~30-50 s. Note it in your
+  README or move to a $7/mo instance.
+- **Vercel preview URLs** (`<project>-<hash>.vercel.app`) won't pass CORS — only the production
+  domain is whitelisted. Add more origins to `CORS_ALLOWED_ORIGINS` (comma-separated) if you
+  need previews.
+- **Upstash 10k commands/day** — see step 2.
 
 ---
 

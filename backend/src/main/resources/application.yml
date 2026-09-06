@@ -20,6 +20,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      # Managed Redis (Upstash, Render Key Value, …) needs a password and TLS; local dev needs neither.
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL:false}
   cache:
     # Dashboard summary / rent-at-risk responses are cached briefly to absorb repeated polling.
     # Defaults to an in-process Caffeine cache; set SPRING_CACHE_TYPE=redis alongside

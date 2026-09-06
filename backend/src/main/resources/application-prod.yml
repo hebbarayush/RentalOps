@@ -7,6 +7,11 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    hikari:
+      # Managed free-tier Postgres (Supabase, Neon) has a low connection ceiling — and a single
+      # free backend instance doesn't need many. Keep the pool small.
+      maximum-pool-size: ${DB_POOL_MAX:5}
+      minimum-idle: 1
   jpa:
     hibernate:
       ddl-auto: validate

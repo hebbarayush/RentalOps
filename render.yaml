@@ -1,23 +1,17 @@
 # Render blueprint — https://render.com/docs/blueprint-spec
 #
-# Deploy the whole stack from this repo:
+# Deploys the RentalOps API as a Docker web service. The database (Supabase) and Redis
+# (Upstash) are external — their connection details go in as environment variables at deploy
+# time (Render prompts for every `sync: false` key). The frontend is on Vercel.
+#
 #   1. Push to GitHub.
 #   2. Render dashboard → New → Blueprint → pick this repo.
-#   3. Set the two values Render prompts for (see `sync: false` below).
-#   4. After the first deploy, copy the frontend URL into the backend's CORS_ALLOWED_ORIGINS
-#      and the backend URL into the frontend's VITE_API_BASE_URL, then redeploy both.
+#   3. Fill the prompted values (see docs/DEPLOYMENT.md for exactly where each comes from).
+#   4. After the frontend is live on Vercel, set CORS_ALLOWED_ORIGINS to its URL and redeploy.
 #
-# Free tier: the web service sleeps after 15 min idle (≈30 s cold start); the database is
-# free for 90 days. See docs/DEPLOYMENT.md for the paid-tier and alternative-host notes.
-
-databases:
-  - name: rentalops-db
-    databaseName: rentalops
-    user: rentalops
-    plan: free
+# Free tier: the service sleeps after 15 min idle (~30-50 s cold start on the next request).
 
 services:
-  # ---------- backend ----------
   - type: web
     name: rentalops-api
     runtime: docker
@@ -28,39 +22,41 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+
+      # ---- Supabase Postgres (use the Session-mode pooler, port 5432) ----
+      # DB_URL: jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
       - key: DB_URL
-        fromDatabase:
-          name: rentalops-db
-          property: connectionString      # jdbc:postgresql://... — Render provides the full JDBC URL
+        sync: false
+      # DB_USERNAME: postgres.<project-ref>
       - key: DB_USERNAME
-        fromDatabase:
-          name: rentalops-db
-          property: user
+        sync: false
       - key: DB_PASSWORD
-        fromDatabase:
-          name: rentalops-db
-          property: password
+        sync: false
+
+      # ---- Auth ----
       - key: JWT_SECRET
-        generateValue: true               # Render generates a strong random value once
+        generateValue: true            # Render generates a strong random value once
       - key: CORS_ALLOWED_ORIGINS
-        sync: false                       # set to the frontend URL after its first deploy
+        sync: false                    # the Vercel URL — set after the frontend's first deploy
+
+      # ---- Upstash Redis ----
+      - key: REDIS_ENABLED
+        value: "true"
+      - key: REDIS_HOST
+        sync: false                    # <name>.upstash.io
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_SSL
+        value: "true"
+      - key: SPRING_CACHE_TYPE
+        value: redis                   # or "caffeine" to keep the dashboard cache off Upstash's command budget
+
+      # ---- Background jobs ----
       - key: JOBS_AUTORUN
         value: "true"
-      - key: REDIS_ENABLED
-        value: "false"                    # free tier: no Redis. See DEPLOYMENT.md to add it.
-      # - key: ANTHROPIC_API_KEY          # optional — enables Claude maintenance triage
-      #   sync: false
 
-  # ---------- frontend ----------
-  - type: web
-    name: rentalops-web
-    runtime: static
-    buildCommand: cd frontend && npm ci && npm run build
-    staticPublishPath: ./frontend/dist
-    envVars:
-      - key: VITE_API_BASE_URL
-        sync: false                       # set to the backend URL after its first deploy
-    routes:
-      - type: rewrite                     # SPA fallback
-        source: /*
-        destination: /index.html
+      # ---- Optional: Claude maintenance triage ----
+      # - key: ANTHROPIC_API_KEY
+      #   sync: false
