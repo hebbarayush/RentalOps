@@ -127,12 +127,16 @@ export function DashboardPage() {
 
   // --- derive the board -------------------------------------------------------
   const unpaidRows: RentPaymentResponse[] = unpaid.data?.content ?? [];
+  // Charges the tenant says they've paid — a quick confirm/deny the manager owes them.
+  const reported = unpaidRows.filter((p) => p.reportedPaidAt);
   const overdue = unpaidRows.filter(
-    (p) => p.paymentStatus === "OVERDUE" || (p.paymentStatus === "PENDING" && daysBetween(p.dueDate) < 0)
+    (p) =>
+      !p.reportedPaidAt &&
+      (p.paymentStatus === "OVERDUE" || (p.paymentStatus === "PENDING" && daysBetween(p.dueDate) < 0))
   );
   const dueSoon = unpaidRows.filter((p) => {
     const d = daysBetween(p.dueDate);
-    return p.paymentStatus !== "OVERDUE" && d >= 0 && d <= 7;
+    return !p.reportedPaidAt && p.paymentStatus !== "OVERDUE" && d >= 0 && d <= 7;
   });
 
   const expiringRows = (expiring.data ?? []).filter((l) => !isSnoozed(`lease-${l.id}`));
@@ -156,8 +160,8 @@ export function DashboardPage() {
     0,
     Math.max(0, MAX_ATTENTION - showOverdue.length - showWork.length)
   );
-  const attentionShown = showOverdue.length + showWork.length + showLease.length;
-  const attentionTotal = overdue.length + urgentWork.length + expiringThisWeek.length;
+  const attentionShown = reported.length + showOverdue.length + showWork.length + showLease.length;
+  const attentionTotal = reported.length + overdue.length + urgentWork.length + expiringThisWeek.length;
   const attentionOverflow = attentionTotal - attentionShown;
 
   // The single most pressing item is posted largest.
@@ -212,6 +216,69 @@ export function DashboardPage() {
               emptyMessage="Nothing needs you right now. Rent is current, no leases end this week, and no maintenance is waiting."
             >
               <div className="notice-strip">
+                {reported.map((p) => {
+                  const key = `reported-${p.id}`;
+                  const who = tenantName.get(p.tenantId) ?? `Tenant #${p.tenantId}`;
+                  const method = (p.reportedMethod ?? "").toLowerCase().replace("_", " ");
+                  return (
+                    <Notice
+                      key={key}
+                      tone="warn"
+                      size="md"
+                      tab="Reported"
+                      heading={`Payment reported — ${who}`}
+                      meta={[
+                        propertyName.get(p.propertyId) ?? "Property",
+                        `${formatCurrency(p.amountDue)} via ${method}`,
+                        p.reportedReference ? `ref ${p.reportedReference}` : null
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      clearing={clearing.has(key)}
+                      fine={p.reportedNote ?? "The tenant says this is paid — confirm once you've checked."}
+                      actions={
+                        <>
+                          <button
+                            className="board-btn board-btn--primary"
+                            onClick={() =>
+                              clear(
+                                key,
+                                { id: key, label: `Confirmed ${formatCurrency(p.amountDue)}`, sub: who, time: nowTime() },
+                                () =>
+                                  paymentsApi.markPaid(p.id, {
+                                    amountPaid: p.amountDue,
+                                    paymentMethod: p.reportedMethod ?? "OTHER",
+                                    transactionReference: p.reportedReference
+                                  }),
+                                () => {
+                                  unpaid.reload();
+                                  summary.reload();
+                                  risk.reload();
+                                }
+                              )
+                            }
+                          >
+                            Confirm received
+                          </button>
+                          <button
+                            className="board-btn"
+                            onClick={() =>
+                              clear(
+                                key,
+                                { id: key, label: `Couldn't confirm ${who}'s payment`, time: nowTime() },
+                                () => paymentsApi.dismissReport(p.id),
+                                () => unpaid.reload()
+                              )
+                            }
+                          >
+                            Can't confirm
+                          </button>
+                        </>
+                      }
+                    />
+                  );
+                })}
+
                 {showOverdue.map((p) => {
                   const key = `pay-${p.id}`;
                   const who = tenantName.get(p.tenantId) ?? `Tenant #${p.tenantId}`;

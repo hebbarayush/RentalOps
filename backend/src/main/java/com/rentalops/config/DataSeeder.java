@@ -131,12 +131,23 @@ public class DataSeeder implements CommandLineRunner {
                 today.plusWeeks(2), today.plusYears(1).plusWeeks(2),
                 new BigDecimal("60000.00"), new BigDecimal("120000.00"), null)));
 
-        RentPayment augustRent = new RentPayment(priyaLease, new RentPaymentRequest(
-                priyaLease.getId(), new BigDecimal("25000.00"), today.minusDays(20), "Rent for last month"));
-        augustRent.markPaid(new MarkPaymentRequest(new BigDecimal("25000.00"), PaymentMethod.UPI, "UPI-88421"));
-        rentPaymentRepository.save(augustRent);
+        LocalDate lastCycle = today.minusDays(20);
+        LocalDate thisCycle = today.plusDays(10);
+
+        RentPayment lastMonthRent = new RentPayment(priyaLease, new RentPaymentRequest(
+                priyaLease.getId(), new BigDecimal("25000.00"), lastCycle, "Rent for last month"));
+        lastMonthRent.markPaid(new MarkPaymentRequest(new BigDecimal("25000.00"), PaymentMethod.UPI, "UPI-88421"));
+        rentPaymentRepository.save(lastMonthRent);
         rentPaymentRepository.save(new RentPayment(priyaLease, new RentPaymentRequest(
-                priyaLease.getId(), new BigDecimal("25000.00"), today.plusDays(10), "Rent for this month")));
+                priyaLease.getId(), new BigDecimal("25000.00"), thisCycle, "Rent for this month")));
+
+        // Keep the billing pointer past both seeded charges so the startup billing run doesn't
+        // generate overlapping ones — the demo then shows exactly one paid + one unpaid charge.
+        while (priyaLease.getNextChargeDate() != null
+                && !priyaLease.getNextChargeDate().isAfter(thisCycle)) {
+            priyaLease.advanceNextChargeDate();
+        }
+        leaseRepository.save(priyaLease);
 
         seedMaintenance(priya, maple, "Leaking kitchen tap",
                 "Constant drip under the sink, water pooling in the cabinet.", MaintenancePriority.HIGH);

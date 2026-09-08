@@ -55,4 +55,16 @@ public class RentPaymentController {
     public RentPaymentResponse markPaid(@PathVariable Long id, @Valid @RequestBody MarkPaymentRequest request) {
         return rentPaymentService.markPaid(id, request);
     }
+
+    /** Tenant: "I paid this outside the app" — the manager still has to confirm. */
+    @PostMapping("/{id}/report-payment")
+    public RentPaymentResponse reportPayment(@PathVariable Long id, @Valid @RequestBody ReportPaymentRequest request) {
+        return rentPaymentService.reportPayment(id, request);
+    }
+
+    /** Manager: clear a tenant's payment report that couldn't be confirmed. */
+    @PostMapping("/{id}/dismiss-report")
+    public RentPaymentResponse dismissReport(@PathVariable Long id) {
+        return rentPaymentService.dismissReport(id);
+    }
 }

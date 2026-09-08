@@ -8,6 +8,8 @@ import com.rentalops.common.events.MaintenanceCreatedEvent;
 import com.rentalops.common.events.MaintenanceUpdatedEvent;
 import com.rentalops.common.events.RentChargeGeneratedEvent;
 import com.rentalops.common.events.RentOverdueEvent;
+import com.rentalops.common.events.RentPaymentReportedEvent;
+import com.rentalops.common.events.RentPaymentSettledEvent;
 import com.rentalops.common.outbox.OutboxEvent;
 import com.rentalops.common.outbox.OutboxEventRepository;
 import org.springframework.context.event.EventListener;
@@ -81,6 +83,33 @@ public class NotificationEventListener {
                 "%s's rent for %s (due %s) is overdue.".formatted(
                         e.tenantName(), e.propertyName(), e.dueDate()),
                 "payments", e.paymentId());
+    }
+
+    @EventListener
+    public void onRentPaymentReported(RentPaymentReportedEvent e) {
+        String ref = e.reference() == null ? "" : " (ref " + e.reference() + ")";
+        enqueue(e, e.managerUserId(), NotificationType.RENT_PAYMENT_REPORTED,
+                "Payment reported — confirm",
+                "%s reports paying rent of %s for %s via %s%s. Confirm it once you've checked."
+                        .formatted(e.tenantName(), e.amountDue(), e.propertyName(),
+                                e.method().toLowerCase().replace('_', ' '), ref),
+                "payments", e.paymentId());
+    }
+
+    @EventListener
+    public void onRentPaymentSettled(RentPaymentSettledEvent e) {
+        if (e.confirmed()) {
+            enqueue(e, e.tenantUserId(), NotificationType.RENT_PAYMENT_CONFIRMED,
+                    "Rent payment confirmed",
+                    "Your manager confirmed your rent payment of %s for %s.".formatted(e.amount(), e.propertyName()),
+                    "payments", e.paymentId());
+        } else {
+            enqueue(e, e.tenantUserId(), NotificationType.RENT_PAYMENT_UNCONFIRMED,
+                    "Rent payment not confirmed",
+                    ("Your manager could not confirm your reported rent payment of %s for %s. "
+                            + "Please check the transfer and report it again.").formatted(e.amount(), e.propertyName()),
+                    "payments", e.paymentId());
+        }
     }
 
     @EventListener

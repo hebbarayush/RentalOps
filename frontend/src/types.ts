@@ -156,6 +156,16 @@ export interface RentPaymentResponse {
   paymentMethod: PaymentMethod | null;
   transactionReference: string | null;
   notes: string | null;
+  reportedPaidAt: string | null;
+  reportedMethod: PaymentMethod | null;
+  reportedReference: string | null;
+  reportedNote: string | null;
+}
+
+export interface ReportPaymentRequest {
+  paymentMethod: PaymentMethod;
+  transactionReference?: string | null;
+  note?: string | null;
 }
 
 export interface RentPaymentRequest {
@@ -246,6 +256,9 @@ export type NotificationType =
   | "RENT_DUE"
   | "RENT_OVERDUE"
   | "RENT_PAID"
+  | "RENT_PAYMENT_REPORTED"
+  | "RENT_PAYMENT_CONFIRMED"
+  | "RENT_PAYMENT_UNCONFIRMED"
   | "LEASE_ACTIVATED"
   | "LEASE_EXPIRING"
   | "LEASE_EXPIRED"

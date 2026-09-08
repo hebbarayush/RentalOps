@@ -49,6 +49,7 @@ Core workflows, beyond CRUD:
 
 - **Lease lifecycle** — `DRAFT → ACTIVE → (EXPIRED | TERMINATED)`, with unit-occupancy tracking, renewal into a linked follow-on lease, and activation guarded against double-booking a unit.
 - **Automatic rent billing** — each active lease walks a billing pointer forward, generating one rent charge per month ahead of its due date; idempotent, runs on a schedule.
+- **Tenant-reported payments** — rent is paid out of band (UPI / bank / cash); the tenant marks a charge as paid from their portal, the manager gets a notification + a *"confirm"* card on the dashboard, and confirming runs the mark-paid flow (or the manager dismisses it and the tenant is asked to recheck).
 - **Housekeeping** — nightly sweep marks overdue rent, expires ended leases and frees their units, and sends lease-expiry reminders at 30 / 14 / 7 / 1 days.
 - **Maintenance triage** — every new request is auto-classified (category, priority, cost band, a drafted tenant reply) by Claude when an API key is configured, or a deterministic keyword classifier otherwise.
 - **Payment-reliability scoring** — each tenant gets a recency-weighted 0–100 score with a human-readable explanation and a "likely to miss next payment" flag; the manager dashboard surfaces a *rent-at-risk* view with total outstanding exposure.
@@ -116,7 +117,7 @@ everything, a manager's queries are constrained to `property.manager = currentUs
 to their own records — combined with request filters via JPA `Specification`s.
 
 **Schema** is owned by Flyway (`ddl-auto: validate` — Hibernate only checks the mapping
-matches). Six migrations, `V1`–`V6`.
+matches). Seven migrations, `V1`–`V7`.
 
 ---
 
@@ -214,6 +215,7 @@ users 1──< notifications                          properties 1──< mainte
 | `V4` | maintenance AI-triage columns |
 | `V5` | reset-token / login-attempt / job-lock tables, `@Version` columns, occupancy & unique-active-lease constraints |
 | `V6` | `outbox_events` |
+| `V7` | tenant payment-report columns on `rent_payments` |
 
 ---
 
@@ -297,7 +299,7 @@ Tenants        POST/GET /tenants           GET/PUT /tenants/{id}
 Leases         POST/GET /leases            GET/PUT /leases/{id}
                POST /leases/{id}/activate | /terminate | /renew | /generate-charges
 Payments       POST/GET /rent-payments     GET /rent-payments/{id}
-               POST /rent-payments/{id}/mark-paid | /rent-payments/run-billing
+               POST /rent-payments/{id}/mark-paid | /report-payment | /dismiss-report | run-billing
 Maintenance    POST/GET/PUT /maintenance-requests   GET /maintenance-requests/{id}
                POST /maintenance-requests/{id}/retriage | /accept-suggestion
 Users  (admin) GET/POST /users   PATCH /users/{id}/status   POST /users/{id}/reset-password
@@ -312,7 +314,7 @@ Full interactive docs at `/swagger-ui/index.html` when the backend is running.
 ## Testing & CI
 
 ```bash
-cd backend  && mvn test        # 46 tests — H2, Flyway off, jobs off
+cd backend  && mvn test        # 49 tests — H2, Flyway off, jobs off
 cd frontend && npm run build   # tsc typecheck + Vite build
 ```
 
@@ -340,7 +342,7 @@ backend/
       outbox/      OutboxEvent, OutboxProcessor, OutboxController
     config/        SecurityConfig, DataSeeder, CacheConfig, ProdConfigValidator
   src/main/resources/
-    db/migration/  V1..V6
+    db/migration/  V1..V7
     application-prod.yml   prod overrides (no local fallbacks)
   Dockerfile     multi-stage: Maven build → JRE-alpine runtime, non-root
 frontend/

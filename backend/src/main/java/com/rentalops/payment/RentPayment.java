@@ -13,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
@@ -51,6 +52,17 @@ public class RentPayment extends BaseEntity {
     private String transactionReference;
     private String notes;
 
+    // The tenant's out-of-band payment claim, pending manager confirmation.
+    private Instant reportedPaidAt;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod reportedMethod;
+
+    private String reportedReference;
+
+    @Column(length = 500)
+    private String reportedNote;
+
     protected RentPayment() {
     }
 
@@ -75,6 +87,30 @@ public class RentPayment extends BaseEntity {
         this.transactionReference = request.transactionReference();
         this.paidDate = LocalDate.now();
         this.paymentStatus = amountPaid.compareTo(amountDue) >= 0 ? PaymentStatus.PAID : PaymentStatus.PARTIAL;
+        clearReport();
+    }
+
+    /** The tenant reports having paid this charge outside the app; awaits manager confirmation. */
+    public void reportPaid(PaymentMethod method, String reference, String note) {
+        this.reportedPaidAt = Instant.now();
+        this.reportedMethod = method;
+        this.reportedReference = reference;
+        this.reportedNote = note;
+    }
+
+    public void clearReport() {
+        this.reportedPaidAt = null;
+        this.reportedMethod = null;
+        this.reportedReference = null;
+        this.reportedNote = null;
+    }
+
+    public boolean isReportedPaid() {
+        return reportedPaidAt != null;
+    }
+
+    public boolean isSettled() {
+        return paymentStatus == PaymentStatus.PAID;
     }
 
     public Lease getLease() { return lease; }
@@ -88,5 +124,9 @@ public class RentPayment extends BaseEntity {
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public String getTransactionReference() { return transactionReference; }
     public String getNotes() { return notes; }
+    public Instant getReportedPaidAt() { return reportedPaidAt; }
+    public PaymentMethod getReportedMethod() { return reportedMethod; }
+    public String getReportedReference() { return reportedReference; }
+    public String getReportedNote() { return reportedNote; }
 }
 

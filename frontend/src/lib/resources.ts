@@ -11,6 +11,7 @@ import type {
   MaintenanceUpdateRequest,
   MarkPaymentRequest,
   NotificationResponse,
+  ReportPaymentRequest,
   Page,
   PropertyRequest,
   PropertyResponse,
@@ -76,6 +77,10 @@ export const paymentsApi = {
   create: (body: RentPaymentRequest) => api.post<RentPaymentResponse>("/api/rent-payments", body),
   markPaid: (id: number, body: MarkPaymentRequest) =>
     api.post<RentPaymentResponse>(`/api/rent-payments/${id}/mark-paid`, body),
+  reportPayment: (id: number, body: ReportPaymentRequest) =>
+    api.post<RentPaymentResponse>(`/api/rent-payments/${id}/report-payment`, body),
+  dismissReport: (id: number) =>
+    api.post<RentPaymentResponse>(`/api/rent-payments/${id}/dismiss-report`),
   runBilling: () => api.post<{ created: number }>("/api/rent-payments/run-billing")
 };
 

@@ -129,12 +129,29 @@ export function PaymentsPage() {
               </td>
               <td>
                 <StatusPill value={p.paymentStatus} />
+                {p.reportedPaidAt && (
+                  <div className="muted">
+                    tenant reported{p.reportedMethod ? ` · ${p.reportedMethod.toLowerCase().replace("_", " ")}` : ""}
+                  </div>
+                )}
               </td>
               {isManager && (
                 <td className="row-actions">
                   {p.paymentStatus !== "PAID" && (
                     <Button variant="secondary" onClick={() => setMarking(p)}>
-                      Mark paid
+                      {p.reportedPaidAt ? "Confirm" : "Mark paid"}
+                    </Button>
+                  )}
+                  {p.reportedPaidAt && (
+                    <Button
+                      variant="ghost"
+                      onClick={async () => {
+                        await paymentsApi.dismissReport(p.id);
+                        setMsg("Payment report dismissed — the tenant has been notified.");
+                        list.reload();
+                      }}
+                    >
+                      Dismiss
                     </Button>
                   )}
                 </td>
@@ -283,8 +300,8 @@ function MarkPaidForm({
 }) {
   const [form, setForm] = useState<MarkPaymentRequest>({
     amountPaid: payment.amountDue,
-    paymentMethod: "UPI",
-    transactionReference: ""
+    paymentMethod: payment.reportedMethod ?? "UPI",
+    transactionReference: payment.reportedReference ?? ""
   });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -302,8 +319,17 @@ function MarkPaidForm({
   }
 
   return (
-    <Modal title={`Mark payment #${payment.id} paid`} onClose={onClose}>
+    <Modal
+      title={payment.reportedPaidAt ? `Confirm payment #${payment.id}` : `Mark payment #${payment.id} paid`}
+      onClose={onClose}
+    >
       <form className="form-grid" onSubmit={submit}>
+        {payment.reportedPaidAt && (
+          <div className="form-note">
+            Tenant reported this on {formatDate(payment.reportedPaidAt)}
+            {payment.reportedNote ? ` — “${payment.reportedNote}”` : ""}.
+          </div>
+        )}
         <div className="form-row">
           <Field label="Amount paid">
             <TextInput
